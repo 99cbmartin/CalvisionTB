@@ -14,7 +14,6 @@ TGraph* timplots[10][7][7];//10 pulses, 7 channels, 7 Nominal Amplitudes. Should
 
 
 void plotarray() {
-//Check Location of Files    
     TFile* file = TFile::Open("finalroots/PWOpar.root");
     if (!file) {
         return;

@@ -5,7 +5,6 @@
 #include <TString.h>
 
 void saveCombinedPlotImage() {
-    // Open the ROOT file
     TFile* file = TFile::Open("finalroots/PWOparfilter.root");
     if (!file) {
         return;
@@ -21,7 +20,6 @@ TFile* file2 = TFile::Open("finalroots/PWOpar.root");
  cans[1] = new TCanvas("Back End SiPMs","Back",3000,2800);
  TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
 TLegend* legend2 = new TLegend(0.7, 0.7, 0.9, 0.9);
-//Plot Back end
 cans[1]->cd();
     for (Int_t i = 0; i < 4; ++i) {
         TH1D* plot = dynamic_cast<TH1D*>(file->Get(Form("h105_%d", i)));
@@ -34,7 +32,6 @@ cans[1]->cd();
                      }
         
 
-	// Set color and legend entry
         plot->SetLineColor(icol[i]);
 	plota->SetLineColor(icol[i]);
 	plota->SetLineWidth(3);
@@ -45,7 +42,6 @@ cans[1]->cd();
         legend->AddEntry(plot, legendEntry, "l");
 	legend->AddEntry(plota, legendEntrya, "l");
  plot->GetYaxis()->SetTitle("Events");
-        // Draw plots on the combined canvas
         if (i == 0) {
             plot->Draw("HIST");
 		plot->SetTitle("Back End SiPMs");
@@ -62,7 +58,6 @@ cans[1]->cd();
    										    }
 
 legend->Draw();
-//New plot of Front end
 cans[0]->cd();
 for (Int_t i = 4; i < 7; ++i) {
         TH1D* plot2 = dynamic_cast<TH1D*>(file->Get(Form("h105_%d", i)));
@@ -98,14 +93,10 @@ plot2->GetYaxis()->SetTitle("Events");
 				plotb->Draw("HIST SAME");
                                                        }
                                                          }
-    // Draw the legend
     legend2->Draw();
 	
-    // Save the combined plot canvas as an image (e.g., PNG)
     cans[0]->Print("SiPMAmp_PWO_Front.png");
     cans[1]->Print("SiPMAmp_PWO_Back.png");	
-    // Clean up
- //   delete cans[];
     delete legend;
 //}
     file->Close();

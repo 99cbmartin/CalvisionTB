@@ -5,7 +5,6 @@
 #include <TString.h>
 
 void saveCombinedPlotImage() {
-    // Open the ROOT file
     TFile* file = TFile::Open("output.root");
     if (!file) {
         return;

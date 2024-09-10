@@ -34,7 +34,6 @@ timplots[i][j] = new TGraph();
 
 
 void plotarray() {
-//Check Location of Files    
     TFile* file = TFile::Open("finalroots/BGOfiltered.root");
     if (!file) {
         return;

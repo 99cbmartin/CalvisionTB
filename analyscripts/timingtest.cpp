@@ -6,111 +6,120 @@
 #include <TString.h>
 #include <iostream> 
 #include <TGraph.h>
+#include <TAxis.h>
 #include <TF1.h>
+#include <TGraphErrors.h>
+#include <TMultiGraph.h>
 
 Int_t icol[7] = { kOrange+10, kOrange-3, kSpring-1, kAzure+6, kAzure-1, kViolet-1, kBlack };
-TGraph* timplots[7];//  7 Nominal Amplitudes. 
+TGraphErrors* timvsAmp[7][20];
+TLegend* legendC = new TLegend(0,1,1,.1);
+TLegend* legendA = new TLegend(0,1,1,.1);
 
-const Int_t nThr = 20;
-Double_t intThr[nThr];
- void initial(){
-for (Int_t dex=0; dex<7; ++dex){
-timplots[dex]= new TGraph();
-   timplots[dex]->SetMarkerSize(2.0);
-                timplots[dex]->SetMarkerStyle(20);
-//              timplots[Ampindex]->GetXaxis()->SetRangeUser(0, 300);
-                timplots[dex]->GetYaxis()->SetRangeUser(0, 1);
-} 
+const int nThr = 20;
+double intThr[nThr];
+
+void initial(){
+for (Int_t i=0;i<7;++i){
+for (Int_t j=0;j<20;++j){
+timvsAmp[i][j]=new TGraphErrors();
 }
-
-
+} 
+ 
+}
+TFile* plotfile = TFile::Open("PWOp_TVA.root", "RECREATE");
 
 
 
 void plotarray() {
-    TFile* file = TFile::Open("finalroots/PWOpar.root");
+    TFile* file = TFile::Open("../outputroots/PWOpAWCNew.root");
     if (!file) {
         return;
     }
     
 
 
-for(Int_t i=0; i<nThr; i++){
+for(int i=0; i<nThr; i++){
       intThr[i] = pow(10, 0.4 + 0.1 * i);
-}
- Double_t NomAmp[7]={16,19,24,33,45,63,87};//Nominal Amplitudes for Adjusment (mV)
-
- TCanvas* canvascheck = new TCanvas("Testing","Testing",2000,1800);//A canvas to plot random sanity Checks
-canvascheck->Divide(3,2,0,0);
-TCanvas* canvasA = new TCanvas("Individual Nominal Amplitudes","Individual Nominal Amplitudes",4000,3600);
-canvasA->Divide(3,2,0,0);
-
-for (Int_t pulseindex =0; pulseindex < 19; ++pulseindex){//Run over 20 Threshold values in the code, Line 30 intThr of Sasha's Code
-
-TH2D* heatmap = dynamic_cast<TH2D*>(file->Get(Form("h201_4_%d",pulseindex)));
-
-Double_t wind =2.0;
+  }
+   Double_t NomAmp[13]={15,20,25,30,35,40,45,50,55,60,65,75,80};
+// Double_t NomAmp[7]={16,19,24,33,45,63,87};
 
 
-		for(Int_t Ampindex = 0; Ampindex < 7; ++Ampindex){
+ for (Int_t chindex = 0; chindex < 7; ++chindex) {
+for (Int_t pulseindex =0; pulseindex < 15; ++pulseindex){
 
-			canvascheck->cd(Ampindex);
-		//	timplots[Ampindex] = new TGraph();
+
+
+	TH2D* heatmap = dynamic_cast<TH2D*>(file->Get(Form("h201AW_%d_%d",chindex,pulseindex)));
+        TString legendEntryC = TString::Format("Ch %d",chindex);
+	Double_t wind =1.0;
+
+
+		for(Int_t Ampindex = 0; Ampindex < 13; ++Ampindex){
+
+		 	
+			TF1* fitfunc;
 			TH1D* proj = (TH1D*)heatmap->ProjectionY("proj",heatmap->GetXaxis()->FindBin(1/(NomAmp[Ampindex]+wind)),heatmap->GetXaxis()->FindBin(1/(NomAmp[Ampindex]-wind))); 
-			proj->Draw("HIST");
-		        canvasA->cd(Ampindex);
-			heatmap->Draw();
 			if(proj->GetEntries() == 0){//sometimes, there is no data for a particular range of Amplitudes. Skip these plots.
 			continue;
 			}else{
-			TF1* fitfunc = new TF1("fitfunc","gaus",proj->GetXaxis()->GetXmin(),proj->GetXaxis()->GetXmax());
+			Int_t maxbin = proj->GetMaximumBin();
+			Double_t peak = proj->GetBinCenter(maxbin);
+			fitfunc = new TF1("fitfunc","gaus",peak-5,peak+5);
                         proj->Fit(fitfunc,"RQ");
                         Double_t timeres = fitfunc->GetParameter(2);
-			timplots[Ampindex]->SetPoint(pulseindex,intThr[pulseindex],timeres);//timing plots stored in an array  
-std::cout<<"For Channel 1: and Amplitude:"<<NomAmp[Ampindex]<<" We will see a timing res:"<<timeres<<" for Thresh of"<<intThr[pulseindex]<<std::endl;	
+			Double_t resErr = fitfunc->GetParError(2);
+			std::cout<<"time error of: "<<resErr<<std::endl;
+		//	std::cout<<"the width error is: "<<fitfunc->GetParError(2)<<std::endl;
+		timvsAmp[chindex][pulseindex]->SetPoint(Ampindex,NomAmp[Ampindex],timeres);
+		timvsAmp[chindex][pulseindex]->SetPointError(Ampindex,0,resErr);
 }
-
-
-}//Close Amp Loop
-}//Close Pulse Loop
+}
+plotfile->cd();
+timvsAmp[chindex][pulseindex]->Write(Form("PWOp_TVA_Ch%d_Thr%d",chindex,pulseindex));
+}
+}
 file->Close();
-canvascheck->Print("pull/helo.png");
-canvasA->Print("pull/hullo.png");
+plotfile->Close();
 }//Close the plotarray function
 
-void plotting(){//Begin the plotting scheme
-
-
-    TCanvas* canvasC = new TCanvas("Individual Channels", "Individual Channels", 4000,3600);
-    canvasC->SetLogx();
-for (Int_t Ampindex = 0; Ampindex <7; ++Ampindex){
-Int_t nump=timplots[Ampindex]->GetN();
-std::cout<<"num points in Ch:1 and Amp:"<<Ampindex<<" is:"<<nump<<std::endl;
-canvasC->cd();
-if (Ampindex == 0){
-timplots[Ampindex]->Draw("AP");
-}//if close
-else{
-timplots[Ampindex]->Draw("AP SAME");
-}//Else close
-//canvascheck->cd();
-//canvascheck->SetLogx();
-//timplots[1]->SetPoint(3,10,0.2);
-//timplots[1]->Draw("AP");
-for (Int_t t=0; t<20; t++){
-Double_t xval= timplots[Ampindex]->GetX()[t];
-Double_t yval = timplots[Ampindex]->GetY()[t];
-std::cout<<"point:"<<t<<" xval:"<<xval<<" and yval:"<<yval<<std::endl;
+void plotting(){
+for(int i=0; i<nThr; i++){
+      intThr[i] = pow(10, 0.4 + 0.1 * i);
 }
-}//Amp close
-canvasC->Print("pull/testingimg.png");
-//canvascheck->Print("pull/wtf.png");
-}//Close plotting function
+TCanvas* chan[7];
+TLegend* leg[7];
+for (int chindex = 0; chindex < 7; chindex++){
+chan[chindex] = new TCanvas(Form("Channel %d: Timing Resolution Vs. Amplitude",chindex),Form("Channel %d: Timing Resolution Vs. Amplitude",chindex),800,600);
+leg[chindex] = new TLegend(0.7, 0.7, 0.9, 0.9);
+chan[chindex]->cd();
+for (int pulseindex = 0; pulseindex < 4; pulseindex++){
+leg[chindex]->AddEntry(timvsAmp[chindex][pulseindex],Form("Thresh %d (~%d mV)",pulseindex,intThr[pulseindex]),"lp");
+timvsAmp[chindex][pulseindex]->SetLineColor(icol[pulseindex]);
+timvsAmp[chindex][pulseindex]->SetMarkerColor(icol[pulseindex]);
+timvsAmp[chindex][pulseindex]->SetTitle(Form("PWOp Channel %d: Timing Resolution Vs. Amplitude",chindex));
+timvsAmp[chindex][pulseindex]->GetXaxis()->SetTitle("Amplitude (mV)");
+timvsAmp[chindex][pulseindex]->GetYaxis()->SetTitle("Timing Resolution (ns)");
+timvsAmp[chindex][pulseindex]->GetXaxis()->SetRangeUser(12,85);
+timvsAmp[chindex][pulseindex]->GetYaxis()->SetRangeUser(0.1,0.7);
+if (pulseindex == 0){
+timvsAmp[chindex][pulseindex]->Draw();
+}else{
+timvsAmp[chindex][pulseindex]->Draw("SAME");
+}
+}
+leg[chindex]->Draw();
+chan[chindex]->Print(Form("plots/TVA/PWOp_Ch%d_TVA.png",chindex));
+}
+
+
+}
 
 int main(){
 initial();
 plotarray();
 plotting();
+
 return 0;
 }
-
