@@ -29,7 +29,7 @@ int main( int argc, char** argv)
    
   TChain *myTree = new TChain("pulse");
   for(int run=runMin; run<=runMax; run++){
-      myTree->Add(Form("../data/run%d_info.root",run));
+      myTree->Add(Form("/store/shared/maxd/run%d_info.root",run));
   }  
   if(myTree != 0){
     pulse* myPulse = new pulse( myTree );
